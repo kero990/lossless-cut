@@ -1,86 +1,76 @@
-import React, { memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaTrashAlt } from 'react-icons/fa';
+import React, { Fragment, memo } from 'react';
+import { IoIosHelpCircle, IoIosSettings } from 'react-icons/io';
+import { Button } from 'evergreen-ui';
+import { MdCallSplit, MdCallMerge } from 'react-icons/md';
 
-import { mySpring } from './animations';
-
-import { formatDuration } from './util';
+import { withBlur } from './util';
 
 
-const TimelineSeg = memo(({
-  duration, cutStart, cutEnd, isActive, segNum, name,
-  onSegClick, invertCutSegments, segBgColor, segActiveBgColor, segBorderColor,
+const TopMenu = memo(({
+  filePath, copyAnyAudioTrack, toggleStripAudio, customOutDir, setOutputDir,
+  renderOutFmt, outSegments, autoMerge, toggleAutoMerge, keyframeCut, toggleKeyframeCut, toggleHelp,
+  numStreamsToCopy, numStreamsTotal, setStreamsSelectorShown, toggleSettings,
 }) => {
-  const cutSectionWidth = `${((cutEnd - cutStart) / duration) * 100}%`;
-
-  const startTimePos = `${(cutStart / duration) * 100}%`;
-  const markerBorder = `2px solid ${isActive ? segBorderColor : 'transparent'}`;
-  const backgroundColor = isActive ? segActiveBgColor : segBgColor;
-  const markerBorderRadius = 5;
-
-  const wrapperStyle = {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: startTimePos,
-    width: cutSectionWidth,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: backgroundColor,
-    originX: 0,
-    boxSizing: 'border-box',
-
-    borderLeft: markerBorder,
-    borderTopLeftRadius: markerBorderRadius,
-    borderBottomLeftRadius: markerBorderRadius,
-
-    borderRight: markerBorder,
-    borderTopRightRadius: markerBorderRadius,
-    borderBottomRightRadius: markerBorderRadius,
-  };
-
-  const onThisSegClick = () => onSegClick(segNum);
-
-  const durationStr = cutEnd > cutStart ? `${formatDuration({ seconds: cutEnd - cutStart })} ` : '';
-  const title = `${durationStr}${name}`;
+  const AutoMergeIcon = autoMerge ? MdCallMerge : MdCallSplit;
 
   return (
-    <motion.div
-      style={wrapperStyle}
-      layoutTransition={mySpring}
-      initial={{ opacity: 0, scaleX: 0 }}
-      animate={{ opacity: 1, scaleX: 1 }}
-      exit={{ opacity: 0, scaleX: 0 }}
-      role="button"
-      onClick={onThisSegClick}
-      title={title}
-    >
-      <div style={{ alignSelf: 'flex-start', flexShrink: 1, fontSize: 10, minWidth: 0, overflow: 'hidden' }}>{segNum + 1}</div>
+    <Fragment>
+      {filePath && (
+        <Fragment>
+          <Button height={20} iconBefore="list" onClick={withBlur(() => setStreamsSelectorShown(true))}>
+            Tracks ({numStreamsToCopy}/{numStreamsTotal})
+          </Button>
 
-      <AnimatePresence>
-        {invertCutSegments && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            style={{ width: 16, height: 16, flexShrink: 1 }}
+          <Button
+            iconBefore={copyAnyAudioTrack ? 'volume-up' : 'volume-off'}
+            height={20}
+            title={`Discard audio? Current: ${copyAnyAudioTrack ? 'keep audio tracks' : 'Discard audio tracks'}`}
+            onClick={withBlur(toggleStripAudio)}
           >
-            <FaTrashAlt
-              style={{ width: '100%', color: segBorderColor }}
-              size={16}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {name && <div style={{ flexBasis: 4, flexShrink: 1 }} />}
-
-      {name && <div style={{ flexShrink: 1, fontSize: 11, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>{name}</div>}
+            {copyAnyAudioTrack ? 'Keep audio' : 'Discard audio'}
+          </Button>
+        </Fragment>
+      )}
 
       <div style={{ flexGrow: 1 }} />
-    </motion.div>
+
+      {filePath && (
+        <Fragment>
+          <Button
+            iconBefore={customOutDir ? 'folder-open' : undefined}
+            height={20}
+            onClick={withBlur(setOutputDir)}
+            title={customOutDir}
+          >
+            {`Working dir ${customOutDir ? 'set' : 'unset'}`}
+          </Button>
+
+          <div style={{ width: 60 }}>{renderOutFmt({ height: 20 })}</div>
+
+          <Button
+            height={20}
+            style={{ opacity: outSegments && outSegments.length < 2 ? 0.4 : undefined }}
+            title={autoMerge ? 'Auto merge segments to one file after export' : 'Export to separate files'}
+            onClick={withBlur(toggleAutoMerge)}
+          >
+            <AutoMergeIcon /> {autoMerge ? 'Merge cuts' : 'Separate files'}
+          </Button>
+
+          <Button
+            height={20}
+            iconBefore={keyframeCut ? 'key' : undefined}
+            title={`Cut mode is ${keyframeCut ? 'keyframe cut' : 'normal cut'}`}
+            onClick={withBlur(toggleKeyframeCut)}
+          >
+            {keyframeCut ? 'Keyframe cut' : 'Normal cut'}
+          </Button>
+        </Fragment>
+      )}
+
+      <IoIosHelpCircle size={24} role="button" onClick={toggleHelp} style={{ verticalAlign: 'middle', marginLeft: 5 }} />
+      <IoIosSettings size={24} role="button" onClick={toggleSettings} style={{ verticalAlign: 'middle', marginLeft: 5 }} />
+    </Fragment>
   );
 });
 
-export default TimelineSeg;
+export default TopMenu;
