@@ -1,140 +1,164 @@
-import React, { Fragment, memo } from 'react';
-import { Button, Table, SegmentedControl, Checkbox } from 'evergreen-ui';
+import React, { memo, Fragment } from 'react';
+import prettyMs from 'pretty-ms';
+import { FaSave, FaPlus, FaMinus, FaTag, FaSortNumericDown, FaAngleRight } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import Swal from 'sweetalert2';
 
-const Settings = memo(({
-  setOutputDir, customOutDir, autoMerge, setAutoMerge, keyframeCut, setKeyframeCut, invertCutSegments, setInvertCutSegments,
-  autoSaveProjectFile, setAutoSaveProjectFile, timecodeShowFrames, setTimecodeShowFrames, askBeforeClose, setAskBeforeClose,
-  renderOutFmt, AutoExportToggler, renderCaptureFormatButton, onWheelTunerRequested,
+import { saveColor } from './colors';
+import { getSegColors } from './util';
+
+const SegmentList = memo(({
+  formatTimecode, cutSegments, getFrameCount, onSegClick,
+  currentSegIndex, invertCutSegments,
+  updateCurrentSegOrder, addCutSegment, removeCutSegment,
+  setCurrentSegmentName, currentCutSeg, toggleSideBar,
 }) => {
-  // eslint-disable-next-line react/jsx-props-no-spreading
-  const Row = (props) => <Table.Row height="auto" paddingY={12} {...props} />;
-  // eslint-disable-next-line react/jsx-props-no-spreading
-  const KeyCell = (props) => <Table.TextCell textProps={{ whiteSpace: 'auto' }} {...props} />;
+  if (!cutSegments && invertCutSegments) {
+    return <div style={{ padding: '0 10px' }}>Make sure you have no overlapping segments.</div>;
+  }
+
+  if (!cutSegments || cutSegments.length === 0) {
+    return <div style={{ padding: '0 10px' }}>No segments to export.</div>;
+  }
+
+  const { segActiveBgColor: currentSegActiveBgColor } = getSegColors(currentCutSeg);
+
+  async function onLabelSegmentPress() {
+    const { value } = await Swal.fire({
+      showCancelButton: true,
+      title: 'Label current segment',
+      inputValue: currentCutSeg.name,
+      input: 'text',
+      inputValidator: (v) => {
+        const maxLength = 100;
+        return v.length > maxLength ? `Max length ${maxLength}` : undefined;
+      },
+    });
+
+    if (value != null) setCurrentSegmentName(value);
+  }
+
+  async function onReorderSegsPress() {
+    if (cutSegments.length < 2) return;
+    const { value } = await Swal.fire({
+      title: `Change order of segment ${currentSegIndex + 1}`,
+      text: `Please enter a number from 1 to ${cutSegments.length} to be the new order for the current segment`,
+      input: 'text',
+      inputValue: currentSegIndex + 1,
+      showCancelButton: true,
+      inputValidator: (v) => {
+        const parsed = parseInt(v, 10);
+        return Number.isNaN(parsed) || parsed > cutSegments.length || parsed < 1 ? 'Invalid number entered' : undefined;
+      },
+    });
+
+    if (value) {
+      const newOrder = parseInt(value, 10);
+      updateCurrentSegOrder(newOrder - 1);
+    }
+  }
 
   return (
     <Fragment>
-      <Row>
-        <KeyCell textProps={{ whiteSpace: 'auto' }}>Output format (default autodetected)</KeyCell>
-        <Table.TextCell>{renderOutFmt({ width: '100%' })}</Table.TextCell>
-      </Row>
-
-      <Row>
-        <KeyCell>
-          Working directory<br />
-          This is where working files, exported files, project files (CSV) are stored.
-        </KeyCell>
-        <Table.TextCell>
-          <Button onClick={setOutputDir}>
-            {customOutDir ? 'Custom working directory' : 'Same directory as input file'}
-          </Button>
-          <div>{customOutDir}</div>
-        </Table.TextCell>
-      </Row>
-
-      <Row>
-        <KeyCell>Auto merge segments to one file during export or export to separate files?</KeyCell>
-        <Table.TextCell>
-          <SegmentedControl
-            options={[{ label: 'Auto merge', value: 'automerge' }, { label: 'Separate', value: 'separate' }]}
-            value={autoMerge ? 'automerge' : 'separate'}
-            onChange={value => setAutoMerge(value === 'automerge')}
+      <div style={{ padding: '0 10px', overflowY: 'scroll', flexGrow: 1 }} className="hide-scrollbar">
+        <div style={{ fontSize: 14, marginBottom: 10 }}>
+          <FaAngleRight
+            title="Close sidebar"
+            size={18}
+            style={{ verticalAlign: 'middle', color: 'white' }}
+            role="button"
+            onClick={toggleSideBar}
           />
-        </Table.TextCell>
-      </Row>
 
-      <Row>
-        <KeyCell>
-          Keyframe cut mode<br />
-          <b>Nearest keyframe</b>: Cut at the nearest keyframe (not accurate time.) Equiv to <i>ffmpeg -ss -i ...</i><br />
-          <b>Normal cut</b>: Accurate time but could leave an empty portion at the beginning of the video. Equiv to <i>ffmpeg -i -ss ...</i><br />
-        </KeyCell>
-        <Table.TextCell>
-          <SegmentedControl
-            options={[{ label: 'Nearest keyframe', value: 'keyframe' }, { label: 'Normal cut', value: 'normal' }]}
-            value={keyframeCut ? 'keyframe' : 'normal'}
-            onChange={value => setKeyframeCut(value === 'keyframe')}
-          />
-        </Table.TextCell>
-      </Row>
+          Segments to export:
+        </div>
 
-      <Row>
-        <KeyCell>
-          <span role="img" aria-label="Yin Yang">☯️</span> Choose cutting mode: Remove or keep selected segments from video when exporting?<br />
-          When <b>Keep</b> is selected, the video inside segments will be kept, while the video outside will be discarded.<br />
-          When <b>Remove</b> is selected, the video inside segments will be discarded, while the video surrounding them will be kept.
-        </KeyCell>
-        <Table.TextCell>
-          <SegmentedControl
-            options={[{ label: 'Remove', value: 'discard' }, { label: 'Keep', value: 'keep' }]}
-            value={invertCutSegments ? 'discard' : 'keep'}
-            onChange={value => setInvertCutSegments(value === 'discard')}
-          />
-        </Table.TextCell>
-      </Row>
+        {cutSegments.map((seg, index) => {
+          const duration = seg.end - seg.start;
+          const durationMs = duration * 1000;
 
-      <Row>
-        <KeyCell>
-          Extract unprocessable tracks to separate files or discard them?<br />
-          (data tracks such as GoPro GPS, telemetry etc. are not copied over by default because ffmpeg cannot cut them, thus they will cause the media duration to stay the same after cutting video/audio)
-        </KeyCell>
-        <Table.TextCell>
-          <AutoExportToggler />
-        </Table.TextCell>
-      </Row>
+          const isActive = !invertCutSegments && currentSegIndex === index;
+          const uuid = seg.uuid || `${seg.start}`;
 
-      <Row>
-        <KeyCell>
-          Auto save project file?<br />
-          The project will be stored along with the output files as a CSV file
-        </KeyCell>
-        <Table.TextCell>
-          <Checkbox
-            label="Auto save project"
-            checked={autoSaveProjectFile}
-            onChange={e => setAutoSaveProjectFile(e.target.checked)}
-          />
-        </Table.TextCell>
-      </Row>
+          function renderNumber() {
+            if (invertCutSegments) return <FaSave style={{ color: saveColor, marginRight: 5, verticalAlign: 'middle' }} size={14} />;
 
-      <Row>
-        <KeyCell>
-          Snapshot capture format
-        </KeyCell>
-        <Table.TextCell>
-          {renderCaptureFormatButton()}
-        </Table.TextCell>
-      </Row>
+            const {
+              segBgColor, segBorderColor,
+            } = getSegColors(seg);
 
-      <Row>
-        <KeyCell>In timecode show</KeyCell>
-        <Table.TextCell>
-          <SegmentedControl
-            options={[{ label: 'Frame numbers', value: 'frames' }, { label: 'Millisecond fractions', value: 'ms' }]}
-            value={timecodeShowFrames ? 'frames' : 'ms'}
-            onChange={value => setTimecodeShowFrames(value === 'frames')}
-          />
-        </Table.TextCell>
-      </Row>
+            return <b style={{ color: 'white', padding: '0 3px', marginRight: 5, background: segBgColor, border: `1px solid ${isActive ? segBorderColor : 'transparent'}`, borderRadius: 10, fontSize: 12 }}>{index + 1}</b>;
+          }
 
-      <Row>
-        <KeyCell>Scroll/wheel sensitivity</KeyCell>
-        <Table.TextCell>
-          <Button onClick={onWheelTunerRequested}>Change sensitivity</Button>
-        </Table.TextCell>
-      </Row>
+          const timeStr = `${formatTimecode(seg.start)} - ${formatTimecode(seg.end)}`;
 
-      <Row>
-        <KeyCell>Ask for confirmation when closing app or file?</KeyCell>
-        <Table.TextCell>
-          <Checkbox
-            label="Ask before closing"
-            checked={askBeforeClose}
-            onChange={e => setAskBeforeClose(e.target.checked)}
-          />
-        </Table.TextCell>
-      </Row>
+          return (
+            <motion.div
+              role="button"
+              onClick={() => !invertCutSegments && onSegClick(index)}
+              key={uuid}
+              positionTransition
+              style={{ originY: 0, margin: '5px 0', border: `1px solid rgba(255,255,255,${isActive ? 1 : 0.3})`, padding: 5, borderRadius: 5 }}
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              exit={{ scaleY: 0 }}
+            >
+              <div style={{ fontSize: 310 / timeStr.length, whiteSpace: 'nowrap', color: 'white', marginBottom: 3 }}>
+                {renderNumber()}
+                <span>{timeStr}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'white' }}>{seg.name}</div>
+              <div style={{ fontSize: 13 }}>
+                Duration {prettyMs(durationMs)}
+              </div>
+              <div style={{ fontSize: 12 }}>
+                ({Math.floor(durationMs)} ms, {getFrameCount(duration)} frames)
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', padding: '5px 0', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid grey' }}>
+        <FaPlus
+          size={30}
+          style={{ margin: '0 5px', borderRadius: 3, color: 'white', cursor: 'pointer', background: 'rgba(255, 255, 255, 0.2)' }}
+          role="button"
+          title="Add segment"
+          onClick={addCutSegment}
+        />
+
+        <FaMinus
+          size={30}
+          style={{ margin: '0 5px', borderRadius: 3, color: 'white', cursor: 'pointer', background: cutSegments.length < 2 ? 'rgba(255, 255, 255, 0.2)' : currentSegActiveBgColor }}
+          role="button"
+          title={`Delete current segment ${currentSegIndex + 1}`}
+          onClick={removeCutSegment}
+        />
+
+        <FaSortNumericDown
+          size={20}
+          title="Change segment order"
+          role="button"
+          style={{ padding: 4, margin: '0 5px', background: currentSegActiveBgColor, borderRadius: 3, color: 'white', cursor: 'pointer' }}
+          onClick={onReorderSegsPress}
+        />
+
+        <FaTag
+          size={20}
+          title="Label segment"
+          role="button"
+          style={{ padding: 4, margin: '0 5px', background: currentSegActiveBgColor, borderRadius: 3, color: 'white', cursor: 'pointer' }}
+          onClick={onLabelSegmentPress}
+        />
+      </div>
+
+      <div style={{ padding: 10, boxSizing: 'border-box', borderBottom: '1px solid grey', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+        <div>Segments total:</div>
+        <div>{formatTimecode(cutSegments.reduce((acc, { start, end }) => (end - start) + acc, 0))}</div>
+      </div>
     </Fragment>
   );
 });
 
-export default Settings;
+export default SegmentList;
