@@ -1,7 +1,29 @@
-export const saveColor = 'hsl(158, 100%, 43%)';
-export const primaryColor = 'hsl(194, 78%, 47%)';
-export const primaryTextColor = 'hsla(194, 100%, 66%, 1)';
-export const waveformColor = '#ffffff';
-// Must be hex because used by ffmpeg
-export const controlsBackground = '#6b6b6b';
-export const timelineBackground = '#444';
+import strongDataUri from 'strong-data-uri';
+import {
+    formatDuration,
+    getOutPath,
+    transferTimestampsWithOffset
+} from './util';
+const fs = window.require('fs-extra');
+const mime = window.require('mime-types');
+function getFrameFromVideo(video, format) {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUri = canvas.toDataURL(`image/${ format }`);
+    return strongDataUri.decode(dataUri);
+}
+export default async function captureFrame(customOutDir, filePath, video, currentTime, captureFormat) {
+    const buf = getFrameFromVideo(video, captureFormat);
+    const ext = mime.extension(buf.mimetype);
+    const time = formatDuration({
+        seconds: currentTime,
+        fileNameFriendly: true
+    });
+    const outPath = getOutPath(customOutDir, filePath, `${ time }.${ ext }`);
+    await fs.writeFile(outPath, buf);
+    const offset = -video.duration + currentTime;
+    await transferTimestampsWithOffset(filePath, outPath, offset);
+    return outPath;
+}
