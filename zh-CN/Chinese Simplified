@@ -1,62 +1,52 @@
-import React, { memo, useState, useCallback, useEffect } from 'react';
-import {
-  sortableContainer,
-  sortableElement,
-  arrayMove,
-} from 'react-sortable-hoc';
-import { basename } from 'path';
-import { Checkbox } from 'evergreen-ui';
+import React from 'react';
+import swal from 'sweetalert2';
 
-const rowStyle = {
-  padding: 5, fontSize: 14, margin: '7px 0', boxShadow: '0 0 5px 0px rgba(0,0,0,0.3)', overflowY: 'auto', whiteSpace: 'nowrap',
-};
+import withReactContent from 'sweetalert2-react-content';
 
-const SortableItem = sortableElement(({ value, sortIndex }) => (
-  <div style={rowStyle} title={value}>
-    {sortIndex + 1}
-    {'. '}
-    {basename(value)}
-  </div>
-));
+import SortableFiles from './SortableFiles';
 
-const SortableContainer = sortableContainer(({ items }) => (
-  <div>
-    {items.map((value, index) => (
-      <SortableItem key={value} index={index} sortIndex={index} value={value} />
-    ))}
-  </div>
-));
 
-const SortableFiles = memo(({
-  items: itemsProp, onChange, helperContainer, onAllStreamsChange,
-}) => {
-  const [items, setItems] = useState(itemsProp);
-  const [allStreams, setAllStreams] = useState(false);
+import { errorToast } from '../util';
 
-  useEffect(() => onAllStreamsChange(allStreams), [allStreams, onAllStreamsChange]);
-  useEffect(() => onChange(items), [items, onChange]);
+const MySwal = withReactContent(swal);
 
-  const onSortEnd = useCallback(({ oldIndex, newIndex }) => {
-    const newItems = arrayMove(items, oldIndex, newIndex);
-    setItems(newItems);
-  }, [items]);
+export async function showMergeDialog(paths, onMergeClick) {
+  if (!paths) return;
+  if (paths.length < 2) {
+    errorToast('More than one file must be selected');
+    return;
+  }
 
-  return (
-    <div>
-      <div><b>Sort your files for merge</b></div>
-      <SortableContainer
-        items={items}
-        onSortEnd={onSortEnd}
-        helperContainer={helperContainer}
-        getContainer={() => helperContainer().parentNode}
-        helperClass="dragging-helper-class"
-      />
+  let swalElem;
+  let outPaths = paths;
+  let allStreams = false;
+  const { dismiss } = await MySwal.fire({
+    width: '90%',
+    showCancelButton: true,
+    confirmButtonText: 'Merge!',
+    onBeforeOpen: (el) => { swalElem = el; },
+    html: (<SortableFiles
+      items={outPaths}
+      onChange={(val) => { outPaths = val; }}
+      onAllStreamsChange={(val) => { allStreams = val; }}
+      helperContainer={() => swalElem}
+    />),
+  });
 
-      <div style={{ marginTop: 10 }}>
-        <Checkbox checked={allStreams} onChange={e => setAllStreams(e.target.checked)} label="Include all streams?" />
-      </div>
-    </div>
-  );
-});
+  if (!dismiss) {
+    onMergeClick({ paths: outPaths, allStreams });
+  }
+}
 
-export default SortableFiles;
+export async function showOpenAndMergeDialog({ dialog, defaultPath, onMergeClick }) {
+  const title = 'Please select files to be merged';
+  const message = 'Please select files to be merged. The files need to be of the exact same format and codecs';
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title,
+    defaultPath,
+    properties: ['openFile', 'multiSelections'],
+    message,
+  });
+  if (canceled) return;
+  showMergeDialog(filePaths, onMergeClick);
+}
