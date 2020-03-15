@@ -1,3 +1,3 @@
 files:
   - source: '*'
-    translation: /%locale%/%language%/
+    translation: /%locale%/%language%
