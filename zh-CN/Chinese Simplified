@@ -1,32 +1,37 @@
 import React, { memo } from 'react';
-import { motion } from 'framer-motion';
-import { FaTrashAlt, FaSave } from 'react-icons/fa';
+import { IoIosCloseCircleOutline } from 'react-icons/io';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Table } from 'evergreen-ui';
 
-import { mySpring } from './animations';
-import { saveColor } from './colors';
+const SettingsSheet = memo(({
+  visible, onTogglePress, renderSettings,
+}) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        className="help-sheet"
+      >
+        <IoIosCloseCircleOutline role="button" onClick={onTogglePress} size={30} style={{ position: 'fixed', right: 0, top: 0, padding: 20 }} />
 
-const InverseCutSegment = memo(({ start, end, duration, invertCutSegments }) => (
-  <motion.div
-    style={{
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      left: `${(start / duration) * 100}%`,
-      width: `${((end - start) / duration) * 100}%`,
-      display: 'flex',
-      alignItems: 'center',
-      pointerEvents: 'none',
-    }}
-    layoutTransition={mySpring}
-  >
-    <div style={{ flexGrow: 1, borderBottom: '1px dashed rgba(255, 255, 255, 0.3)', marginLeft: 5, marginRight: 5 }} />
-    {invertCutSegments ? (
-      <FaSave style={{ color: saveColor }} size={16} />
-    ) : (
-      <FaTrashAlt style={{ color: 'rgba(255, 255, 255, 0.3)' }} size={16} />
+        <Table style={{ marginTop: 40 }}>
+          <Table.Head>
+            <Table.TextHeaderCell>
+              Settings
+            </Table.TextHeaderCell>
+            <Table.TextHeaderCell>
+              Current setting
+            </Table.TextHeaderCell>
+          </Table.Head>
+          <Table.Body>
+            {renderSettings()}
+          </Table.Body>
+        </Table>
+      </motion.div>
     )}
-    <div style={{ flexGrow: 1, borderBottom: '1px dashed rgba(255, 255, 255, 0.3)', marginLeft: 5, marginRight: 5 }} />
-  </motion.div>
+  </AnimatePresence>
 ));
 
-export default InverseCutSegment;
+export default SettingsSheet;
