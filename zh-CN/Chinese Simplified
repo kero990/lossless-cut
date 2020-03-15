@@ -1,12 +1,152 @@
-[Desktop Entry]
-Name=LosslessCut
-Comment=simple video editor to trim or cut videos
-Exec=/app/bin/run.sh
-MimeType=video/mpeg;video/x-mpeg;video/msvideo;video/quicktime;video/x-anim;video/x-avi;video/x-ms-asf;video/x-ms-wmv;video/x-msvideo;video/x-nsv;video/x-flc;video/x-fli;video/x-flv;video/vnd.rn-realvideo;video/mp4;video/mp4v-es;video/mp2t;application/ogg;application/x-ogg;video/x-ogm+ogg;audio/x-vorbis+ogg;application/x-matroska;audio/x-matroska;video/x-matroska;video/webm;
-Icon=no.mifi.losslesscut
-Terminal=false
-Type=Application
-Encoding=UTF-8
-Categories=AudioVideo;AudioVideoEditing;
-Keywords=trim;codec;cut;movie;mpeg;avi;h264;mkv;mp4;
-StartupWMClass=losslesscut
+{
+  "name": "lossless-cut",
+  "productName": "LosslessCut",
+  "description": "The swiss army knife of lossless video/audio editing",
+  "copyright": "Copyright © 2020 ${author}",
+  "version": "3.16.4",
+  "main": "public/electron.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "concurrently -k \"BROWSER=none PORT=3001 react-scripts start\" \"wait-on http://localhost:3001 && electron .\"",
+    "icon-gen": "mkdir -p icon-build && svg2png src/icon.svg -o ./icon-build/app-512.png -w 512 -h 512",
+    "build": "yarn icon-gen && react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "lint": "eslint --ext .jsx --ext .js .",
+    "pack-mac": "electron-builder --mac",
+    "prepack-mac": "yarn build",
+    "pack-win": "electron-builder --win",
+    "prepack-win": "yarn build",
+    "postinstall": "electron-builder install-app-deps",
+    "pack-linux": "electron-builder --linux",
+    "prepack-linux": "yarn build"
+  },
+  "author": {
+    "name": "Mikael Finstad",
+    "email": "finstaden@gmail.com",
+    "url": "https://mifi.no"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mifi/lossless-cut.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "axios": "^0.19.2",
+    "color": "^3.1.0",
+    "concurrently": "^5.1.0",
+    "csv-parse": "^4.8.5",
+    "csv-stringify": "^5.3.6",
+    "electron": "^8.0.0",
+    "electron-builder": "^22.3.2",
+    "electron-builder-notarize": "^1.1.2",
+    "electron-devtools-installer": "^2.2.4",
+    "eslint": "^5.16.0 || ^6.1.0",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-react-hooks": "^1.7.0",
+    "evergreen-ui": "^4.23.0",
+    "file-url": "^3.0.0",
+    "framer-motion": "^1.8.4",
+    "hammerjs": "^2.0.8",
+    "lodash": "^4.17.13",
+    "moment": "^2.18.1",
+    "mousetrap": "^1.6.1",
+    "p-map": "^3.0.0",
+    "p-queue": "^6.2.0",
+    "pretty-ms": "^6.0.0",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "react-hammerjs": "^1.0.1",
+    "react-icons": "^3.9.0",
+    "react-lottie": "^1.2.3",
+    "react-scripts": "^3.4.0",
+    "react-sortable-hoc": "^1.5.3",
+    "react-use": "^13.26.1",
+    "strong-data-uri": "^1.0.5",
+    "svg2png": "^4.1.1",
+    "sweetalert2": "^9.7.2",
+    "sweetalert2-react-content": "^1.0.1",
+    "use-trace-update": "^1.3.0",
+    "uuid": "^3.3.2",
+    "wait-on": "^4.0.1"
+  },
+  "dependencies": {
+    "electron-default-menu": "^1.0.0",
+    "electron-is-dev": "^0.1.2",
+    "electron-store": "^5.1.0",
+    "execa": "^4.0.0",
+    "ffmpeg-static": "^4.0.1",
+    "ffprobe-static": "^3.0.0",
+    "file-type": "^12.4.0",
+    "fs-extra": "^8.1.0",
+    "github-api": "^3.2.2",
+    "mime-types": "^2.1.14",
+    "read-chunk": "^2.0.0",
+    "string-to-stream": "^1.1.1",
+    "trash": "^6.1.1"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      "electron 8.0"
+    ],
+    "development": [
+      "electron 8.0"
+    ]
+  },
+  "build": {
+    "files": [
+      "build/**/*",
+      "!node_modules/ffmpeg-static/ffmpeg",
+      "!node_modules/ffprobe-static/bin/**/*"
+    ],
+    "asar": {
+      "smartUnpack": false
+    },
+    "appId": "no.mifi.losslesscut",
+    "artifactName": "${productName}-${os}.${ext}",
+    "afterSign": "electron-builder-notarize",
+    "mac": {
+      "hardenedRuntime": true,
+      "target": "dmg",
+      "extraResources": [
+        "node_modules/ffmpeg-static/ffmpeg",
+        "node_modules/ffprobe-static/bin/darwin/**"
+      ],
+      "icon": "icon-build/app-512.png"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "zip"
+      ],
+      "extraResources": [
+        "node_modules/ffmpeg-static/ffmpeg.exe",
+        "node_modules/ffprobe-static/bin/win32/x64/**"
+      ],
+      "icon": "icon-build/app-512.png"
+    },
+    "linux": {
+      "extraResources": [
+        "node_modules/ffmpeg-static/ffmpeg",
+        "node_modules/ffprobe-static/bin/linux/x64/**"
+      ],
+      "icon": "icon-build/app-512.png",
+      "target": [
+        "tar.bz2",
+        "AppImage",
+        "snap"
+      ]
+    },
+    "snap": {
+      "publish": [
+        "github"
+      ]
+    }
+  }
+}
