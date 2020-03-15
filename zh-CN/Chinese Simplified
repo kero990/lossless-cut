@@ -1,32 +1,7 @@
-import React, { memo } from 'react';
-import { motion } from 'framer-motion';
-import { FaTrashAlt, FaSave } from 'react-icons/fa';
+If you have an issue with cutting a particular file, or an unexpected bug or crash, please open developer tools after starting LosslessCut and before doing the failing operation. Then share the output from the javascript console.
 
-import { mySpring } from './animations';
-import { saveColor } from './colors';
+If you have an issue cutting a particular file, please also share the file, if possible. Also please try to cut it with the ffmpeg command line directly.
 
-const InverseCutSegment = memo(({ start, end, duration, invertCutSegments }) => (
-  <motion.div
-    style={{
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      left: `${(start / duration) * 100}%`,
-      width: `${((end - start) / duration) * 100}%`,
-      display: 'flex',
-      alignItems: 'center',
-      pointerEvents: 'none',
-    }}
-    layoutTransition={mySpring}
-  >
-    <div style={{ flexGrow: 1, borderBottom: '1px dashed rgba(255, 255, 255, 0.3)', marginLeft: 5, marginRight: 5 }} />
-    {invertCutSegments ? (
-      <FaSave style={{ color: saveColor }} size={16} />
-    ) : (
-      <FaTrashAlt style={{ color: 'rgba(255, 255, 255, 0.3)' }} size={16} />
-    )}
-    <div style={{ flexGrow: 1, borderBottom: '1px dashed rgba(255, 255, 255, 0.3)', marginLeft: 5, marginRight: 5 }} />
-  </motion.div>
-));
-
-export default InverseCutSegment;
+How to open developer tools:
+- Windows: <kbd>F12</kbd> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd>
+- Mac: <kbd>Cmd</kbd>+<kbd>Opt</kbd>+<kbd>I</kbd>
